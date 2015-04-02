@@ -17,6 +17,16 @@ $RECYCLE.BIN/
 # Windows shortcuts
 *.lnk
 
+#VS ignore
+*.dll
+**/bin/**
+**/FakesAssemblies/**
+*GhostDoc.*
+*suo
+**/packages/**
+*.cache
+**/obj/**
+
 # =========================
 # Operating System Files
 # =========================
