@@ -15,6 +15,14 @@ namespace LD.Utilities
         /// <summary>
         /// Initializes a new instance of the <see cref="DownloadImages"/> class.
         /// </summary>
+        public DownloadImages()
+        {
+            this.client = new HttpClient();
+        }
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="DownloadImages"/> class.
+        /// </summary>
         /// <param name="client">The http client to use to download web page and image files.</param>
         /// <exception cref="System.ArgumentNullException">client is null</exception>
         public DownloadImages(System.Net.Http.HttpClient client)

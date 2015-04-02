@@ -33,7 +33,7 @@ namespace LD.Utilities.Tests
             tempDirectory.Create();
             var fileCount = tempDirectory.GetFiles().Count();
             //class under test
-            var classUnderTest = new LD.Utilities.DownloadImages(new HttpClient());
+            var classUnderTest = new LD.Utilities.DownloadImages();
             #endregion
 
             #region Adjust
@@ -68,7 +68,7 @@ namespace LD.Utilities.Tests
             tempDirectory.Create();
             var fileCount = tempDirectory.GetFiles().Count();
             //class under test
-            var classUnderTest = new LD.Utilities.DownloadImages(new HttpClient());
+            var classUnderTest = new LD.Utilities.DownloadImages();
             #endregion
 
             #region Adjust
@@ -104,7 +104,7 @@ namespace LD.Utilities.Tests
             tempDirectory.Create();
             var fileCount = tempDirectory.GetFiles().Count();
             //class under test
-            var classUnderTest = new LD.Utilities.DownloadImages(new HttpClient());
+            var classUnderTest = new LD.Utilities.DownloadImages();
             #endregion
 
             #region Adjust
