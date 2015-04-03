@@ -133,6 +133,67 @@ namespace LD.Utilities.Tests
         }
 
         /// <summary>
+        /// Asserts that when a valid url is supplied all image files are downloaded.
+        /// </summary>
+        [TestMethod]
+        [TestCategory("LD.Utilities.DownloadImages")]
+        [ExpectedException(typeof(PathTooLongException))]
+        public async Task Download_PathTooLong()
+        {
+            #region Arrange
+            var uri = new Uri("http://localhost");
+            var directory = new DirectoryInfo("C:\\");
+            //mocks
+            var handler = Mock.Of<HttpMessageHandler>();
+            //mocks setup
+            var imageName = "l.png";
+            Mock.Get(handler).Protected()
+                .Setup<Task<HttpResponseMessage>>("SendAsync", ItExpr.Is<HttpRequestMessage>(m => m.RequestUri == uri), ItExpr.IsAny<CancellationToken>())
+                .Returns(Task<HttpResponseMessage>.Factory.StartNew(() =>
+                {
+                    var response = new HttpResponseMessage(HttpStatusCode.OK);
+                    response.Content = new StringContent(string.Format("<img src=\"{0}\"/>", imageName));
+                    return response;
+                }));
+
+            var imageContent = UnicodeEncoding.Default.GetBytes("This is our mocked up image");
+            Mock.Get(handler).Protected()
+                .Setup<Task<HttpResponseMessage>>("SendAsync", ItExpr.Is<HttpRequestMessage>(m => m.RequestUri == new Uri(uri, imageName)), ItExpr.IsAny<CancellationToken>())
+                .Returns(Task<HttpResponseMessage>.Factory.StartNew(() =>
+                {
+                    var response = new HttpResponseMessage(HttpStatusCode.OK);
+                    response.Content = new ByteArrayContent(imageContent);
+                    return response;
+                }));
+            //class under test
+            var client = HttpClientFactory.Create(handler);
+            var classUnderTest = new LD.Utilities.DownloadImages(client);
+            #endregion
+
+            #region Adjust
+            //base arrangement no need for adjustment
+            #endregion
+
+            #region Act
+            string savePath = null;
+            byte[] imageBytes = null;
+            using (ShimsContext.Create())
+            {
+                System.IO.Fakes.ShimFile.WriteAllBytesStringByteArray =
+                    (path, bytes) =>
+                    {
+                        throw new PathTooLongException();
+                    };
+                await classUnderTest.DownloadAsync(uri, directory);
+            }
+            #endregion
+
+            #region Assert
+            //exception expected
+            #endregion
+        }
+
+        /// <summary>
         /// Asserts that when the directory does not exist an ArgumentException is thrown.
         /// </summary>
         [TestMethod]
@@ -684,6 +745,84 @@ namespace LD.Utilities.Tests
             Assert.AreEqual(2, imageBytes.Count);
             Assert.AreEqual(1, imageBytes.Count(m => UnicodeEncoding.Default.GetString(m) == "This is our mocked up image"));
             Assert.AreEqual(1, imageBytes.Count(m => UnicodeEncoding.Default.GetString(m) == "This is our absolute mocked up image"));
+            #endregion
+        }
+
+        /// <summary>
+        /// Asserts that when a valid url is supplied all image files are downloaded. Duplicate images are skipped.
+        /// </summary>
+        [TestMethod]
+        [TestCategory("LD.Utilities.DownloadImages")]
+        public async Task Download_With_Same_Image()
+        {
+            #region Arrange
+            var uri = new Uri("http://localhost");
+            var directory = new DirectoryInfo("C:\\");
+            //mocks
+            var handler = Mock.Of<HttpMessageHandler>();
+            //mocks setup
+            var imageName = "l.png";
+            Mock.Get(handler).Protected()
+                .Setup<Task<HttpResponseMessage>>("SendAsync", ItExpr.Is<HttpRequestMessage>(m => m.RequestUri == uri), ItExpr.IsAny<CancellationToken>())
+                .Returns(Task<HttpResponseMessage>.Factory.StartNew(() =>
+                {
+                    var response = new HttpResponseMessage(HttpStatusCode.OK);
+                    response.Content = new StringContent(string.Format("<img src=\"{0}\"/>", imageName));
+                    return response;
+                }));
+
+            var imageContent = UnicodeEncoding.Default.GetBytes("This is our mocked up image");
+            Mock.Get(handler).Protected()
+                .Setup<Task<HttpResponseMessage>>("SendAsync", ItExpr.Is<HttpRequestMessage>(m => m.RequestUri == new Uri(uri, imageName)), ItExpr.IsAny<CancellationToken>())
+                .Returns(Task<HttpResponseMessage>.Factory.StartNew(() =>
+                {
+                    var response = new HttpResponseMessage(HttpStatusCode.OK);
+                    response.Content = new ByteArrayContent(imageContent);
+                    return response;
+                }));
+            //class under test
+            var client = HttpClientFactory.Create(handler);
+            var classUnderTest = new LD.Utilities.DownloadImages(client);
+            #endregion
+
+            #region Adjust
+            var imageHtml = string.Format(
+                            @"<body>
+                                <img src=""{0}""/>
+                                <img src=""{1}""/>
+                              </body>", imageName, imageName);
+            var contentWithAbsoluteAndRelativeUris = new StringContent(imageHtml);
+            Mock.Get(handler).Protected()
+                .Setup<Task<HttpResponseMessage>>("SendAsync", ItExpr.Is<HttpRequestMessage>(m => m.RequestUri == uri), ItExpr.IsAny<CancellationToken>())
+                .Returns(Task<HttpResponseMessage>.Factory.StartNew(() =>
+                {
+                    var response = new HttpResponseMessage(HttpStatusCode.OK);
+                    response.Content = contentWithAbsoluteAndRelativeUris;
+                    return response;
+                }));
+            #endregion
+
+            #region Act
+            var savePath = new List<string>();
+            var imageBytes = new List<byte[]>();
+            using (ShimsContext.Create())
+            {
+                System.IO.Fakes.ShimFile.WriteAllBytesStringByteArray =
+                    (path, bytes) =>
+                    {
+                        savePath.Add(path);
+                        imageBytes.Add(bytes);
+                    };
+                await classUnderTest.DownloadAsync(uri, directory);
+            }
+            #endregion
+
+            #region Assert
+            Assert.IsTrue(savePath.All(m => Path.GetDirectoryName(m) == directory.ToString()));
+            Assert.AreEqual(1, savePath.Count);
+            Assert.AreEqual(1, savePath.Count(m => Path.GetFileName(m) == imageName));
+            Assert.AreEqual(1, imageBytes.Count);
+            Assert.AreEqual(1, imageBytes.Count(m => UnicodeEncoding.Default.GetString(m) == "This is our mocked up image"));
             #endregion
         }
 

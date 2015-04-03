@@ -2,6 +2,7 @@
 using System.IO;
 using System.Net.Http;
 using System.Threading.Tasks;
+using System.Linq;
 
 namespace LD.Utilities
 {
@@ -70,32 +71,39 @@ namespace LD.Utilities
                 var initialResponse = await client.GetStringAsync(uri);
                 var html = new HtmlAgilityPack.HtmlDocument();
                 html.LoadHtml(initialResponse);
-                var imageElements = html.DocumentNode.Descendants("img");
-                foreach (var imageElement in imageElements)
-                {
-                    var imageName = imageElement.GetAttributeValue("src", null);
-                    if (imageName == null)
+                var imageUris = html.DocumentNode
+                    .Descendants("img")
+                    .Select(m => m.GetAttributeValue("src", null))
+                    .Where(m => m != null)
+                    .Distinct()
+                    .Select(m =>
                     {
-                        continue;
-                    }
-                    var imageUri = new Uri(imageName, UriKind.RelativeOrAbsolute);
-                    if (!imageUri.IsAbsoluteUri)
-                    {
-                        imageUri = new Uri(uri, imageUri);
-                    }
-                    try
-                    {
-                        var imageBytes = await client.GetByteArrayAsync(imageUri);
-                        var path = Path.Combine(directory.ToString(), Path.GetFileName(imageUri.LocalPath));
-                        File.WriteAllBytes(path, imageBytes);
-                    }
-                    catch (HttpRequestException) { }
-                }
+                        var imageUri = new Uri(m, UriKind.RelativeOrAbsolute);
+                        if (!imageUri.IsAbsoluteUri)
+                        {
+                            imageUri = new Uri(uri, imageUri);
+                        }
+                        return imageUri;
+                    });
+                var tasks = imageUris.Select(imageUri => GetImageAsync(imageUri, directory)).ToArray();
+                await Task.WhenAll(tasks);
+                
             }
             catch (HttpRequestException requestException)
             {
                 throw new DownloadException(uri, requestException);
             }
+        }
+
+        private async Task GetImageAsync(Uri imageUri, DirectoryInfo directory)
+        {
+            try
+            {
+                var imageBytes = await client.GetByteArrayAsync(imageUri);
+                var path = Path.Combine(directory.ToString(), Path.GetFileName(imageUri.LocalPath));
+                File.WriteAllBytes(path, imageBytes);
+            }
+            catch (HttpRequestException) { }
         }
     }
 }

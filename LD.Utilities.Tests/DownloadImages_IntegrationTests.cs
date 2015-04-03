@@ -23,7 +23,7 @@ namespace LD.Utilities.Tests
         public async Task DownloadAsync_BaseTest()
         {
             #region Arrange
-            var uri = new Uri("http://google.com");
+            var uri = new Uri("http://www.arngren.net/");
             var tempPath = Path.Combine(Path.GetTempPath(), "LD.Utilities");
             var tempDirectory = new DirectoryInfo(tempPath);
             if (tempDirectory.Exists)
